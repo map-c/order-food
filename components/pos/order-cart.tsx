@@ -15,40 +15,77 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-
-interface CartItem {
-  id: number
-  name: string
-  price: number
-  quantity: number
-  note?: string
-}
+import { usePOS } from "@/lib/contexts/pos-context"
+import { useTables } from "@/lib/hooks/use-tables"
+import { toast } from "sonner"
 
 export function OrderCart() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    { id: 1, name: "宫保鸡丁", price: 38, quantity: 2 },
-    { id: 2, name: "麻婆豆腐", price: 28, quantity: 1 },
-    { id: 3, name: "米饭", price: 3, quantity: 2, note: "少盐" },
-  ])
+  const {
+    selectedTableId,
+    cartItems,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    orderNotes,
+    setOrderNotes,
+    subtotal,
+    tax,
+    total,
+  } = usePOS()
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const tax = subtotal * 0.06
-  const total = subtotal + tax
+  const { tables } = useTables()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedPayMethod, setSelectedPayMethod] = useState<"cash" | "card" | "alipay" | "wechat">("cash")
+  const [dialogOpen, setDialogOpen] = useState(false)
 
-  const updateQuantity = (id: number, delta: number) => {
-    setCartItems((items) =>
-      items
-        .map((item) => (item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item))
-        .filter((item) => item.quantity > 0),
-    )
-  }
+  const selectedTable = tables.find((t) => t.id === selectedTableId)
 
-  const removeItem = (id: number) => {
-    setCartItems((items) => items.filter((item) => item.id !== id))
-  }
+  const handleSubmitOrder = async () => {
+    if (!selectedTableId) {
+      toast.error("请先选择桌台")
+      return
+    }
 
-  const clearCart = () => {
-    setCartItems([])
+    if (cartItems.length === 0) {
+      toast.error("购物车为空")
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tableId: selectedTableId,
+          items: cartItems.map((item) => ({
+            dishId: item.dishId,
+            quantity: item.quantity,
+            notes: item.notes,
+          })),
+          notes: orderNotes,
+          payMethod: selectedPayMethod,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success("订单创建成功")
+        clearCart()
+        setDialogOpen(false)
+      } else {
+        toast.error(data.error?.message || "订单创建失败")
+      }
+    } catch (error) {
+      console.error("提交订单失败:", error)
+      toast.error("订单创建失败，请重试")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -57,14 +94,26 @@ export function OrderCart() {
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-[#333333]">当前订单</h3>
-          <Button variant="ghost" size="sm" onClick={clearCart} className="h-8 text-[#EA5455] hover:text-[#EA5455]">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearCart}
+            disabled={cartItems.length === 0}
+            className="h-8 text-[#EA5455] hover:text-[#EA5455]"
+          >
             <Trash2 className="h-4 w-4 mr-1" />
             清空
           </Button>
         </div>
         <div className="flex items-center gap-2 text-sm text-[#6B7280]">
           <ShoppingCart className="h-4 w-4" />
-          <span>桌号: A-01</span>
+          <span>
+            {selectedTableId === "takeout"
+              ? "外带订单"
+              : selectedTable
+                ? `桌号: ${selectedTable.number}`
+                : "未选择桌台"}
+          </span>
         </div>
       </div>
 
@@ -79,14 +128,17 @@ export function OrderCart() {
         ) : (
           <div className="p-4 space-y-3">
             {cartItems.map((item) => (
-              <div key={item.id} className="bg-muted rounded-lg p-3">
+              <div key={item.dishId} className="bg-muted rounded-lg p-3">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-[#333333] text-sm truncate">{item.name}</h4>
                     <p className="text-sm font-semibold text-[#1E90FF] mt-1">¥{item.price}</p>
-                    {item.note && <p className="text-xs text-[#6B7280] mt-1">备注: {item.note}</p>}
+                    {item.notes && <p className="text-xs text-[#6B7280] mt-1">备注: {item.notes}</p>}
                   </div>
-                  <button onClick={() => removeItem(item.id)} className="text-[#EA5455] hover:text-[#EA5455]/80 ml-2">
+                  <button
+                    onClick={() => removeFromCart(item.dishId)}
+                    className="text-[#EA5455] hover:text-[#EA5455]/80 ml-2"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -96,7 +148,7 @@ export function OrderCart() {
                       size="icon"
                       variant="outline"
                       className="h-7 w-7 bg-transparent"
-                      onClick={() => updateQuantity(item.id, -1)}
+                      onClick={() => updateQuantity(item.dishId, -1)}
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -105,7 +157,7 @@ export function OrderCart() {
                       size="icon"
                       variant="outline"
                       className="h-7 w-7 bg-transparent"
-                      onClick={() => updateQuantity(item.id, 1)}
+                      onClick={() => updateQuantity(item.dishId, 1)}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -128,10 +180,12 @@ export function OrderCart() {
                 <span>小计</span>
                 <span>¥{subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-[#6B7280]">
-                <span>税费 (6%)</span>
-                <span>¥{tax.toFixed(2)}</span>
-              </div>
+              {tax > 0 && (
+                <div className="flex justify-between text-[#6B7280]">
+                  <span>税费</span>
+                  <span>¥{tax.toFixed(2)}</span>
+                </div>
+              )}
               <Separator />
               <div className="flex justify-between text-lg font-bold text-[#333333]">
                 <span>合计</span>
@@ -140,11 +194,19 @@ export function OrderCart() {
             </div>
 
             <div className="space-y-2">
-              <Textarea placeholder="订单备注（选填）" className="resize-none h-16 text-sm" />
+              <Textarea
+                placeholder="订单备注（选填）"
+                className="resize-none h-16 text-sm"
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+              />
 
-              <Dialog>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white font-semibold text-base">
+                  <Button
+                    className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white font-semibold text-base"
+                    disabled={!selectedTableId}
+                  >
                     提交订单 ¥{total.toFixed(2)}
                   </Button>
                 </DialogTrigger>
@@ -159,7 +221,9 @@ export function OrderCart() {
                       <div className="bg-muted rounded-lg p-3 space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span className="text-[#6B7280]">桌号</span>
-                          <span className="font-medium">A-01</span>
+                          <span className="font-medium">
+                            {selectedTableId === "takeout" ? "外带" : selectedTable?.number || "-"}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-[#6B7280]">菜品数量</span>
@@ -177,25 +241,41 @@ export function OrderCart() {
                     <div className="space-y-2">
                       <h4 className="font-semibold text-sm">支付方式</h4>
                       <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent">
+                        <Button
+                          variant={selectedPayMethod === "wechat" ? "default" : "outline"}
+                          className="h-20 flex-col gap-2"
+                          onClick={() => setSelectedPayMethod("wechat")}
+                        >
                           <div className="h-8 w-8 rounded-lg bg-[#28C76F] flex items-center justify-center text-white font-bold">
                             微
                           </div>
                           <span className="text-sm">微信支付</span>
                         </Button>
-                        <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent">
+                        <Button
+                          variant={selectedPayMethod === "alipay" ? "default" : "outline"}
+                          className="h-20 flex-col gap-2"
+                          onClick={() => setSelectedPayMethod("alipay")}
+                        >
                           <div className="h-8 w-8 rounded-lg bg-[#1E90FF] flex items-center justify-center text-white font-bold">
                             支
                           </div>
                           <span className="text-sm">支付宝</span>
                         </Button>
-                        <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent">
+                        <Button
+                          variant={selectedPayMethod === "cash" ? "default" : "outline"}
+                          className="h-20 flex-col gap-2"
+                          onClick={() => setSelectedPayMethod("cash")}
+                        >
                           <div className="h-8 w-8 rounded-lg bg-[#FFB400] flex items-center justify-center text-white font-bold">
                             现
                           </div>
                           <span className="text-sm">现金支付</span>
                         </Button>
-                        <Button variant="outline" className="h-20 flex-col gap-2 bg-transparent">
+                        <Button
+                          variant={selectedPayMethod === "card" ? "default" : "outline"}
+                          className="h-20 flex-col gap-2"
+                          onClick={() => setSelectedPayMethod("card")}
+                        >
                           <div className="h-8 w-8 rounded-lg bg-[#5A6B7B] flex items-center justify-center text-white font-bold">
                             挂
                           </div>
@@ -205,8 +285,16 @@ export function OrderCart() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline">取消</Button>
-                    <Button className="bg-[#1E90FF] hover:bg-[#1E90FF]/90">确认支付</Button>
+                    <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                      取消
+                    </Button>
+                    <Button
+                      className="bg-[#1E90FF] hover:bg-[#1E90FF]/90"
+                      onClick={handleSubmitOrder}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "提交中..." : "确认支付"}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

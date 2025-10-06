@@ -6,117 +6,21 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-
-const categories = ["全部", "热菜", "凉菜", "主食", "汤品", "饮料"]
-
-const dishes = [
-  {
-    id: 1,
-    name: "宫保鸡丁",
-    category: "热菜",
-    price: 38,
-    image: "/kung-pao-chicken.png",
-    available: true,
-  },
-  {
-    id: 2,
-    name: "麻婆豆腐",
-    category: "热菜",
-    price: 28,
-    image: "/mapo-tofu.png",
-    available: true,
-  },
-  {
-    id: 3,
-    name: "鱼香肉丝",
-    category: "热菜",
-    price: 32,
-    image: "/yuxiang-pork.jpg",
-    available: true,
-  },
-  {
-    id: 4,
-    name: "糖醋里脊",
-    category: "热菜",
-    price: 42,
-    image: "/sweet-sour-pork.jpg",
-    available: false,
-  },
-  {
-    id: 5,
-    name: "回锅肉",
-    category: "热菜",
-    price: 36,
-    image: "/twice-cooked-pork.png",
-    available: true,
-  },
-  {
-    id: 6,
-    name: "凉拌黄瓜",
-    category: "凉菜",
-    price: 12,
-    image: "/cucumber-salad.jpg",
-    available: true,
-  },
-  {
-    id: 7,
-    name: "皮蛋豆腐",
-    category: "凉菜",
-    price: 16,
-    image: "/century-egg-tofu.jpg",
-    available: true,
-  },
-  {
-    id: 8,
-    name: "米饭",
-    category: "主食",
-    price: 3,
-    image: "/steamed-rice.png",
-    available: true,
-  },
-  {
-    id: 9,
-    name: "蛋炒饭",
-    category: "主食",
-    price: 18,
-    image: "/fried-rice.png",
-    available: true,
-  },
-  {
-    id: 10,
-    name: "西红柿蛋汤",
-    category: "汤品",
-    price: 15,
-    image: "/tomato-egg-soup.jpg",
-    available: true,
-  },
-  {
-    id: 11,
-    name: "可乐",
-    category: "饮料",
-    price: 6,
-    image: "/refreshing-cola.png",
-    available: true,
-  },
-  {
-    id: 12,
-    name: "雪碧",
-    category: "饮料",
-    price: 6,
-    image: "/sprite-drink.jpg",
-    available: true,
-  },
-]
+import { useDishes } from "@/lib/hooks/use-dishes"
+import { useCategories } from "@/lib/hooks/use-categories"
+import { usePOS } from "@/lib/contexts/pos-context"
 
 export function DishGrid() {
-  const [selectedCategory, setSelectedCategory] = useState("全部")
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(undefined)
   const [searchQuery, setSearchQuery] = useState("")
 
-  const filteredDishes = dishes.filter((dish) => {
-    const matchesCategory = selectedCategory === "全部" || dish.category === selectedCategory
-    const matchesSearch = dish.name.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesCategory && matchesSearch
+  const { categories, isLoading: categoriesLoading } = useCategories()
+  const { dishes, isLoading: dishesLoading } = useDishes({
+    categoryId: selectedCategoryId,
+    search: searchQuery || undefined,
+    available: true,
   })
+  const { addToCart } = usePOS()
 
   return (
     <div className="flex flex-col h-full bg-muted">
@@ -133,17 +37,27 @@ export function DishGrid() {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2">
+          <button
+            onClick={() => setSelectedCategoryId(undefined)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              selectedCategoryId === undefined
+                ? "bg-[#1E90FF] text-white"
+                : "bg-white border border-[#E0E6ED] text-[#333333] hover:border-[#1E90FF]"
+            }`}
+          >
+            全部
+          </button>
           {categories.map((category) => (
             <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
+              key={category.id}
+              onClick={() => setSelectedCategoryId(category.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                selectedCategory === category
+                selectedCategoryId === category.id
                   ? "bg-[#1E90FF] text-white"
                   : "bg-white border border-[#E0E6ED] text-[#333333] hover:border-[#1E90FF]"
               }`}
             >
-              {category}
+              {category.name}
             </button>
           ))}
         </div>
@@ -151,31 +65,58 @@ export function DishGrid() {
 
       {/* Dish Grid */}
       <ScrollArea className="flex-1">
-        <div className="p-4 grid grid-cols-3 gap-4">
-          {filteredDishes.map((dish) => (
-            <button
-              key={dish.id}
-              disabled={!dish.available}
-              className={`relative bg-white rounded-lg p-4 text-left transition-all shadow-card hover:shadow-lg ${
-                !dish.available ? "opacity-50 cursor-not-allowed" : "hover:scale-[1.02]"
-              }`}
-            >
-              {!dish.available && <Badge className="absolute top-2 right-2 bg-[#EA5455] text-white">沽清</Badge>}
-              <div className="aspect-square rounded-lg overflow-hidden mb-3 bg-[#F0F2F5]">
-                <img src={dish.image || "/placeholder.svg"} alt={dish.name} className="w-full h-full object-cover" />
-              </div>
-              <h4 className="font-semibold text-[#333333] mb-1 text-balance">{dish.name}</h4>
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-bold text-[#1E90FF]">¥{dish.price}</span>
-                {dish.available && (
-                  <Button size="icon" className="h-8 w-8 rounded-full bg-[#1E90FF] hover:bg-[#1E90FF]/90">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
+        {dishesLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-[#6B7280]">加载中...</p>
+          </div>
+        ) : dishes.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-[#6B7280]">暂无菜品</p>
+          </div>
+        ) : (
+          <div className="p-4 grid grid-cols-3 gap-4">
+            {dishes.map((dish) => {
+              const isAvailable = dish.isAvailable && !dish.isSoldOut
+              return (
+                <div
+                  key={dish.id}
+                  className={`relative bg-white rounded-lg p-4 text-left transition-all shadow-card hover:shadow-lg ${
+                    !isAvailable ? "opacity-50 cursor-not-allowed" : "hover:scale-[1.02]"
+                  }`}
+                >
+                  {!isAvailable && <Badge className="absolute top-2 right-2 bg-[#EA5455] text-white">沽清</Badge>}
+                  <div className="aspect-square rounded-lg overflow-hidden mb-3 bg-[#F0F2F5]">
+                    <img
+                      src={dish.image || "/placeholder.svg"}
+                      alt={dish.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <h4 className="font-semibold text-[#333333] mb-1 text-balance">{dish.name}</h4>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-[#1E90FF]">¥{dish.price}</span>
+                    {isAvailable && (
+                      <Button
+                        size="icon"
+                        className="h-8 w-8 rounded-full bg-[#1E90FF] hover:bg-[#1E90FF]/90"
+                        onClick={() =>
+                          addToCart({
+                            id: dish.id,
+                            name: dish.name,
+                            price: dish.price,
+                            image: dish.image,
+                          })
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </ScrollArea>
     </div>
   )
