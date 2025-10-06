@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import useSWR from "swr"
 import { Edit, Trash2, QrCode, MoreVertical } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,28 +19,34 @@ import {
 } from "@/components/ui/alert-dialog"
 import { QRCodeDialog } from "./qrcode-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { fetcher } from "@/lib/api-client"
+
+interface TableData {
+  id: string
+  number: string
+  capacity: number
+  area: string | null
+  status: string
+  qrCode: string | null
+  note: string | null
+  hasOrders: boolean
+  createdAt: string
+  updatedAt: string
+}
 
 interface TableListProps {
-  onEdit: (table: any) => void
+  onEdit: (table: TableData) => void
 }
 
 export function TableList({ onEdit }: TableListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [qrcodeDialogOpen, setQrcodeDialogOpen] = useState(false)
-  const [selectedTable, setSelectedTable] = useState<any>(null)
+  const [selectedTable, setSelectedTable] = useState<TableData | null>(null)
   const { toast } = useToast()
 
-  // 模拟数据
-  const tables = [
-    { id: 1, number: "A01", area: "大厅", capacity: 4, status: "available", hasOrders: false, note: "" },
-    { id: 2, number: "A02", area: "大厅", capacity: 4, status: "occupied", hasOrders: true, note: "靠窗位置" },
-    { id: 3, number: "A03", area: "大厅", capacity: 6, status: "cleaning", hasOrders: false, note: "" },
-    { id: 4, number: "B01", area: "包间", capacity: 8, status: "available", hasOrders: false, note: "VIP包间" },
-    { id: 5, number: "B02", area: "包间", capacity: 10, status: "occupied", hasOrders: true, note: "豪华包间" },
-    { id: 6, number: "C01", area: "户外", capacity: 4, status: "available", hasOrders: false, note: "" },
-    { id: 7, number: "C02", area: "户外", capacity: 4, status: "disabled", hasOrders: false, note: "维修中" },
-    { id: 8, number: "A04", area: "大厅", capacity: 2, status: "available", hasOrders: false, note: "" },
-  ]
+  // 使用 SWR 获取桌台数据（fetcher 已经解包 API 响应，直接返回 TableData[]）
+  const { data, error, isLoading, mutate } = useSWR<TableData[]>('/api/tables', fetcher)
+  const tables = data || []
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -47,6 +54,8 @@ export function TableList({ onEdit }: TableListProps) {
         return { label: "空闲", variant: "secondary" as const }
       case "occupied":
         return { label: "就餐中", variant: "default" as const }
+      case "reserved":
+        return { label: "预订", variant: "outline" as const }
       case "cleaning":
         return { label: "清理中", variant: "outline" as const }
       case "disabled":
@@ -69,17 +78,67 @@ export function TableList({ onEdit }: TableListProps) {
     setDeleteDialogOpen(true)
   }
 
-  const confirmDelete = () => {
-    toast({
-      title: "删除成功",
-      description: `桌台 ${selectedTable?.number} 已删除`,
-    })
-    setDeleteDialogOpen(false)
+  const confirmDelete = async () => {
+    try {
+      if (!selectedTable) return
+      const response = await fetch(`/api/tables/${selectedTable.id}`, {
+        method: 'DELETE',
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        toast({
+          title: "删除失败",
+          description: result.error?.message || "删除桌台时发生错误",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "删除成功",
+        description: `桌台 ${selectedTable?.number} 已删除`,
+      })
+      setDeleteDialogOpen(false)
+      mutate() // 刷新数据
+    } catch (error) {
+      toast({
+        title: "删除失败",
+        description: "网络错误，请稍后重试",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleShowQRCode = (table: any) => {
     setSelectedTable(table)
     setQrcodeDialogOpen(true)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">加载中...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-destructive">加载桌台数据失败</p>
+      </div>
+    )
+  }
+
+  if (tables.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg border">
+        <p className="text-muted-foreground mb-2">暂无桌台数据</p>
+        <p className="text-sm text-muted-foreground">点击右上角"新增桌台"按钮添加桌台</p>
+      </div>
+    )
   }
 
   return (
@@ -102,7 +161,7 @@ export function TableList({ onEdit }: TableListProps) {
               return (
                 <TableRow key={table.id}>
                   <TableCell className="font-medium">{table.number}</TableCell>
-                  <TableCell>{table.area}</TableCell>
+                  <TableCell>{table.area || '未分配区域'}</TableCell>
                   <TableCell>{table.capacity} 人</TableCell>
                   <TableCell>
                     <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>

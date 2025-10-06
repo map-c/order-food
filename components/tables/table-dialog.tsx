@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import { useSWRConfig } from "swr"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,14 +20,25 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 
+interface TableData {
+  id: string
+  number: string
+  capacity: number
+  area: string | null
+  status: string
+  note: string | null
+}
+
 interface TableDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  table?: any
+  table?: TableData | null
 }
 
 export function TableDialog({ open, onOpenChange, table }: TableDialogProps) {
   const { toast } = useToast()
+  const { mutate } = useSWRConfig()
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     number: "",
     area: "",
@@ -55,7 +67,7 @@ export function TableDialog({ open, onOpenChange, table }: TableDialogProps) {
     }
   }, [table, open])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.number || !formData.area || !formData.capacity) {
@@ -67,11 +79,62 @@ export function TableDialog({ open, onOpenChange, table }: TableDialogProps) {
       return
     }
 
-    toast({
-      title: table ? "更新成功" : "创建成功",
-      description: table ? `桌台 ${formData.number} 信息已更新` : `桌台 ${formData.number} 已创建，二维码已自动生成`,
-    })
-    onOpenChange(false)
+    setIsSubmitting(true)
+
+    try {
+      const url = table ? `/api/tables/${table.id}` : '/api/tables'
+      const method = table ? 'PATCH' : 'POST'
+
+      const requestBody: any = {
+        number: formData.number,
+        area: formData.area,
+        capacity: parseInt(formData.capacity),
+      }
+
+      if (formData.note) {
+        requestBody.note = formData.note
+      }
+
+      if (table) {
+        requestBody.status = formData.enabled ? 'available' : 'disabled'
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        toast({
+          title: table ? "更新失败" : "创建失败",
+          description: result.error?.message || "操作失败，请稍后重试",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: table ? "更新成功" : "创建成功",
+        description: table ? `桌台 ${formData.number} 信息已更新` : `桌台 ${formData.number} 已创建，二维码已自动生成`,
+      })
+
+      // 刷新桌台列表
+      mutate('/api/tables')
+      onOpenChange(false)
+    } catch (error) {
+      toast({
+        title: "操作失败",
+        description: "网络错误，请稍后重试",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -151,10 +214,12 @@ export function TableDialog({ open, onOpenChange, table }: TableDialogProps) {
             )}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               取消
             </Button>
-            <Button type="submit">{table ? "保存" : "创建"}</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "提交中..." : table ? "保存" : "创建"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

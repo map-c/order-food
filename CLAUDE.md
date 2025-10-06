@@ -31,12 +31,26 @@ pnpm start         # 启动生产服务器
 pnpm lint          # 运行 ESLint 检查
 
 # 数据库（使用 Prisma）
-npx prisma init                    # 初始化 Prisma（首次设置）
-npx prisma generate                # 生成 Prisma Client
-npx prisma migrate dev --name xxx  # 创建并应用数据库迁移
-npx prisma migrate deploy          # 生产环境应用迁移
-npx prisma studio                  # 启动数据库可视化界面
-npx prisma db seed                 # 运行种子数据脚本
+pnpm db:migrate        # 创建并应用数据库迁移（开发环境）
+pnpm db:seed           # 运行种子数据脚本
+pnpm db:studio         # 启动数据库可视化界面
+npx prisma generate    # 生成 Prisma Client（修改 schema 后需执行）
+```
+
+## 环境配置
+
+项目需要配置 `.env` 文件（不提交到 Git），包含以下变量：
+
+```bash
+# 数据库连接（SQLite）
+DATABASE_URL="file:./dev.db"
+
+# 阿里云 OSS 配置（用于图片上传）
+ALIYUN_ACCESS_KEY_ID="你的 AccessKey ID"
+ALIYUN_ACCESS_KEY_SECRET="你的 AccessKey Secret"
+ALIYUN_OSS_REGION="oss-cn-hangzhou"
+ALIYUN_OSS_BUCKET="你的 Bucket 名称"
+ALIYUN_OSS_ENDPOINT="https://你的bucket.oss-cn-hangzhou.aliyuncs.com"
 ```
 
 ## 项目架构
@@ -52,13 +66,15 @@ npx prisma db seed                 # 运行种子数据脚本
   /tables           # 桌台管理
   /reports          # 报表中心
   /settings         # 系统设置
-  /api              # API 路由（计划中）
-    /dishes         # 菜品 API
-    /orders         # 订单 API
-    /tables         # 桌台 API
-    /stats          # 统计数据 API
-    /reports        # 报表 API
-    /auth           # 认证 API
+  /api              # API 路由
+    /dishes         # ✅ 菜品 API（已实现）
+    /categories     # ✅ 分类 API（已实现）
+    /oss/sts        # ✅ OSS 临时凭证 API（已实现）
+    /tables         # ✅ 桌台 API（已实现）
+    /orders         # 订单 API（计划中）
+    /stats          # 统计数据 API（计划中）
+    /reports        # 报表 API（计划中）
+    /auth           # 认证 API（计划中）
   /layout.tsx       # 根布局
   /globals.css      # 全局样式
 
@@ -73,19 +89,19 @@ npx prisma db seed                 # 运行种子数据脚本
   /ui               # shadcn/ui 基础 UI 组件库
 
 /lib                 # 工具函数
-  /utils.ts         # cn() 函数用于 className 合并
-  /prisma.ts        # Prisma Client 实例（计划中）
-  /api-client.ts    # API 请求封装（计划中）
-  /api-response.ts  # API 响应工具（计划中）
+  /utils.ts         # ✅ cn() 函数用于 className 合并
+  /prisma.ts        # ✅ Prisma Client 实例
+  /api-client.ts    # ✅ API 请求封装
+  /api-response.ts  # ✅ API 响应工具
+  /oss-client.ts    # ✅ 阿里云 OSS 上传客户端
 
-/prisma              # Prisma 配置（计划中）
-  /schema.prisma    # 数据库 Schema 定义
-  /migrations/      # 数据库迁移文件
-  /seed.ts          # 种子数据脚本
+/prisma              # Prisma 配置
+  /schema.prisma    # ✅ 数据库 Schema 定义
+  /migrations/      # ✅ 数据库迁移文件
+  /seed.ts          # ✅ 种子数据脚本
 
-/types               # TypeScript 类型定义（计划中）
-  /api.ts           # API 类型定义
-  /database.ts      # 数据库模型类型
+/types               # TypeScript 类型定义
+  /oss.ts           # ✅ OSS 相关类型定义
 ```
 
 ### 路径别名
@@ -242,22 +258,45 @@ export default async function DishesPage() {
 }
 ```
 
-### 数据模型（当前为模拟数据）
+### 图片上传功能
 
-**当前状态**：
-- ❌ 所有数据硬编码在组件内（如 `dishes` 数组、`stats` 对象）
-- ❌ 无数据持久化
-- ❌ 无 API 层
-- ❌ 无用户认证
+项目集成了阿里云 OSS 直传功能，用于菜品图片等静态资源的上传：
 
-**迁移计划**：
-- ✅ 第一阶段：建立 Prisma + SQLite 本地数据库
-- ✅ 第二阶段：实现 API 路由层
-- ✅ 第三阶段：前端集成 SWR 替换硬编码数据
-- ✅ 第四阶段：添加 NextAuth.js 身份认证
-- ✅ 第五阶段：实现实时订单推送（Pusher/WebSocket）
+**实现方案**：
+- 后端通过 STS 服务提供临时凭证（`/api/oss/sts`）
+- 前端使用临时凭证直传 OSS，避免文件经过服务器
+- 支持拖拽上传、进度显示、文件类型和大小验证
+- 上传工具函数：`lib/oss-client.ts`
 
-参考文档：`docs/Next.js API路由实现方案.md`
+**使用示例**：
+```typescript
+import { uploadToOSS, validateImageFile } from '@/lib/oss-client'
+
+const result = await uploadToOSS({
+  file,
+  pathPrefix: 'dishes/',
+  onProgress: (percent) => console.log(`上传进度: ${percent}%`)
+})
+```
+
+### 数据库实现进度
+
+**已完成**：
+- ✅ Prisma + SQLite 数据库配置
+- ✅ 数据模型定义（User、Category、Dish、Table、Order、OrderItem）
+- ✅ 菜品管理 API（CRUD 完整实现）
+- ✅ 分类管理 API
+- ✅ 桌台管理 API（CRUD 完整实现，支持状态管理）
+- ✅ 前端使用 SWR 进行数据获取和缓存
+- ✅ 阿里云 OSS 图片上传集成
+
+**待实现**：
+- ⏳ 订单管理 API
+- ⏳ 统计数据 API
+- ⏳ NextAuth.js 身份认证
+- ⏳ 实时订单推送（Pusher/WebSocket）
+
+参考文档：`docs/Next.js API路由实现方案.md`、`docs/阿里云OSS图片上传集成.md`
 
 ### 性能优化建议
 

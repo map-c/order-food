@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import useSWR from "swr"
 import { MoreVertical, Edit, Trash2, QrCode, Users } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -18,28 +19,37 @@ import {
 } from "@/components/ui/alert-dialog"
 import { QRCodeDialog } from "./qrcode-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { fetcher } from "@/lib/api-client"
+
+interface Table {
+  id: string
+  number: string
+  capacity: number
+  area: string | null
+  status: string
+  qrCode: string | null
+  note: string | null
+  hasOrders: boolean
+  createdAt: string
+  updatedAt: string
+} 
+
+type ApiResponse = Table[]
+
 
 interface TableGridProps {
-  onEdit: (table: any) => void
+  onEdit: (table: Table) => void
 }
 
 export function TableGrid({ onEdit }: TableGridProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [qrcodeDialogOpen, setQrcodeDialogOpen] = useState(false)
-  const [selectedTable, setSelectedTable] = useState<any>(null)
+  const [selectedTable, setSelectedTable] = useState<Table | null>(null)
   const { toast } = useToast()
 
-  // 模拟数据
-  const tables = [
-    { id: 1, number: "A01", area: "大厅", capacity: 4, status: "available", hasOrders: false },
-    { id: 2, number: "A02", area: "大厅", capacity: 4, status: "occupied", hasOrders: true },
-    { id: 3, number: "A03", area: "大厅", capacity: 6, status: "cleaning", hasOrders: false },
-    { id: 4, number: "B01", area: "包间", capacity: 8, status: "available", hasOrders: false },
-    { id: 5, number: "B02", area: "包间", capacity: 10, status: "occupied", hasOrders: true },
-    { id: 6, number: "C01", area: "户外", capacity: 4, status: "available", hasOrders: false },
-    { id: 7, number: "C02", area: "户外", capacity: 4, status: "disabled", hasOrders: false },
-    { id: 8, number: "A04", area: "大厅", capacity: 2, status: "available", hasOrders: false },
-  ]
+  // 使用 SWR 获取桌台数据
+  const { data, error, isLoading, mutate } = useSWR<ApiResponse>('/api/tables', fetcher)
+  const tables: Table[] = data || []
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -47,6 +57,8 @@ export function TableGrid({ onEdit }: TableGridProps) {
         return { label: "空闲", color: "bg-gray-100 text-gray-700 border-gray-300" }
       case "occupied":
         return { label: "就餐中", color: "bg-green-100 text-green-700 border-green-300" }
+      case "reserved":
+        return { label: "预订", color: "bg-blue-100 text-blue-700 border-blue-300" }
       case "cleaning":
         return { label: "清理中", color: "bg-yellow-100 text-yellow-700 border-yellow-300" }
       case "disabled":
@@ -69,17 +81,67 @@ export function TableGrid({ onEdit }: TableGridProps) {
     setDeleteDialogOpen(true)
   }
 
-  const confirmDelete = () => {
-    toast({
-      title: "删除成功",
-      description: `桌台 ${selectedTable?.number} 已删除`,
-    })
-    setDeleteDialogOpen(false)
+  const confirmDelete = async () => {
+    try {
+      if (!selectedTable) return
+      const response = await fetch(`/api/tables/${selectedTable?.id}`, {
+        method: 'DELETE',
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        toast({
+          title: "删除失败",
+          description: result.error?.message || "删除桌台时发生错误",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "删除成功",
+        description: `桌台 ${selectedTable?.number} 已删除`,
+      })
+      setDeleteDialogOpen(false)
+      mutate() // 刷新数据
+    } catch (error) {
+      toast({
+        title: "删除失败",
+        description: "网络错误，请稍后重试",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleShowQRCode = (table: any) => {
     setSelectedTable(table)
     setQrcodeDialogOpen(true)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">加载中...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-destructive">加载桌台数据失败</p>
+      </div>
+    )
+  }
+
+  if (tables.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg border">
+        <p className="text-muted-foreground mb-2">暂无桌台数据</p>
+        <p className="text-sm text-muted-foreground">点击右上角"新增桌台"按钮添加桌台</p>
+      </div>
+    )
   }
 
   return (
@@ -92,7 +154,7 @@ export function TableGrid({ onEdit }: TableGridProps) {
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">{table.number}</h3>
-                  <p className="text-sm text-muted-foreground">{table.area}</p>
+                  <p className="text-sm text-muted-foreground">{table.area || '未分配区域'}</p>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
