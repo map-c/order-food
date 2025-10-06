@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Loader2, Upload } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { ImageUpload } from "@/components/ui/image-upload"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api-client"
 import type { Dish, Category } from "@/types/api"
@@ -68,6 +69,9 @@ export function DishFormDialog({
     reset,
     setValue,
     watch,
+    control,
+    clearErrors,
+    setError,
   } = useForm<DishFormValues>({
     resolver: zodResolver(dishFormSchema),
     defaultValues: {
@@ -222,20 +226,32 @@ export function DishFormDialog({
             {/* 菜品图片 */}
             <div className="space-y-2">
               <Label htmlFor="image">
-                菜品图片 URL <span className="text-[#EA5455]">*</span>
+                菜品图片 <span className="text-[#EA5455]">*</span>
               </Label>
-              <Input
-                id="image"
-                type="url"
-                placeholder="https://example.com/image.jpg"
-                {...register("image")}
+              <Controller
+                name="image"
+                control={control}
+                render={({ field }) => (
+                  <ImageUpload
+                    value={field.value}
+                    onChange={(url) => {
+                      field.onChange(url)
+                      clearErrors("image")
+                    }}
+                    onError={(error) => {
+                      setError("image", {
+                        type: "manual",
+                        message: error,
+                      })
+                      toast.error(error)
+                    }}
+                    pathPrefix="dishes/"
+                  />
+                )}
               />
               {errors.image && (
                 <p className="text-xs text-[#EA5455]">{errors.image.message}</p>
               )}
-              <p className="text-xs text-[#6B7280]">
-                提示：请输入图片的完整 URL 地址
-              </p>
             </div>
 
             {/* 菜品描述 */}
