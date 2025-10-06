@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     // 验证请求数据
     const validationResult = createOrderSchema.safeParse(body)
     if (!validationResult.success) {
-      return apiResponse.error(validationResult.error.errors[0].message, 400)
+      return errorResponse("VALIDATION_ERROR", validationResult.error.errors[0].message, 400)
     }
 
     const { tableId, items, notes, payMethod } = validationResult.data
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!table) {
-      return apiResponse.error("桌台不存在", 404)
+      return errorResponse("NOT_FOUND", "桌台不存在", 404)
     }
 
     // 获取所有菜品信息并验证
@@ -147,13 +147,14 @@ export async function POST(request: NextRequest) {
     })
 
     if (dishes.length !== dishIds.length) {
-      return apiResponse.error("部分菜品不存在", 404)
+      return errorResponse("NOT_FOUND", "部分菜品不存在", 404)
     }
 
     // 检查菜品是否可用
     const unavailableDishes = dishes.filter((dish) => !dish.isAvailable || dish.isSoldOut)
     if (unavailableDishes.length > 0) {
-      return apiResponse.error(
+      return errorResponse(
+        "VALIDATION_ERROR",
         `以下菜品不可用: ${unavailableDishes.map((d) => d.name).join(", ")}`,
         400,
       )
@@ -210,9 +211,9 @@ export async function POST(request: NextRequest) {
       data: { status: "occupied" },
     })
 
-    return apiResponse.success(order, "订单创建成功", 201)
+    return successResponse(order, "订单创建成功", 201)
   } catch (error) {
     console.error("创建订单失败:", error)
-    return apiResponse.error("创建订单失败", 500)
+    return errorResponse("INTERNAL_ERROR", "创建订单失败", 500)
   }
 }

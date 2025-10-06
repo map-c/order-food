@@ -66,3 +66,69 @@ export interface DishQueryParams {
   isAvailable?: boolean
   isSoldOut?: boolean
 }
+
+// 订单相关类型
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "completed"
+  | "cancelled"
+
+export type OrderPayMethod = "cash" | "card" | "alipay" | "wechat"
+
+export interface TableSummary {
+  id: string
+  number: string
+  capacity: number
+  area: string | null
+  status: string
+  qrCode: string | null
+  note: string | null
+}
+
+export interface OrderItem {
+  id: string
+  orderId: string
+  dishId: string
+  quantity: number
+  unitPrice: number
+  subtotal: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  dish: Dish
+}
+
+export interface Order {
+  id: string
+  orderNo: string
+  tableId: string
+  status: OrderStatus
+  totalPrice: number
+  paidAmount: number
+  isPaid: boolean
+  payMethod: OrderPayMethod | null
+  notes: string | null
+  userId: string | null
+  createdAt: string
+  updatedAt: string
+  table: TableSummary
+  items: OrderItem[]
+  createdBy?: {
+    id: string
+    name: string | null
+    email: string | null
+  } | null
+}
+
+export interface OrderListResponse {
+  orders: Order[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}

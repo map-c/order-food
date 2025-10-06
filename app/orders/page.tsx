@@ -1,8 +1,17 @@
+"use client"
+
+import { useState } from "react"
 import { TopNav } from "@/components/layout/top-nav"
-import { OrderFilters } from "@/components/orders/order-filters"
+import { OrderFilters, type OrderFilterState } from "@/components/orders/order-filters"
 import { OrderList } from "@/components/orders/order-list"
 
 export default function OrdersPage() {
+  const [filters, setFilters] = useState<OrderFilterState>({
+    search: "",
+    status: "all",
+    datePreset: "all",
+  })
+
   return (
     <div className="min-h-screen">
       <TopNav />
@@ -15,10 +24,10 @@ export default function OrdersPage() {
           </div>
 
           {/* Filters */}
-          <OrderFilters />
+          <OrderFilters value={filters} onChange={setFilters} />
 
           {/* Order List */}
-          <OrderList />
+          <OrderList filters={filters} />
         </div>
       </main>
     </div>

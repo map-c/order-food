@@ -293,7 +293,7 @@ export function OrderCart() {
                       onClick={handleSubmitOrder}
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? "提交中..." : "确认支付"}
+                      {isSubmitting ? "提交中..." : "确认下单"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
