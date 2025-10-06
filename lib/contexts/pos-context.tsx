@@ -43,20 +43,19 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [orderNotes, setOrderNotes] = useState("")
 
   // 添加到购物车
-  const addToCart = useCallback((dish: { id: string; name: string; price: number; image: string }) => {
-    setCartItems((items) => {
-      const existingItem = items.find((item) => item.dishId === dish.id)
+  const addToCart = useCallback(
+    (dish: { id: string; name: string; price: number; image: string }) => {
+      const existingItem = cartItems.find((item) => item.dishId === dish.id)
 
       if (existingItem) {
-        // 如果已存在，增加数量
-        toast.success(`${dish.name} 数量 +1`)
-        return items.map((item) =>
-          item.dishId === dish.id ? { ...item, quantity: item.quantity + 1 } : item,
+        setCartItems((items) =>
+          items.map((item) =>
+            item.dishId === dish.id ? { ...item, quantity: item.quantity + 1 } : item,
+          ),
         )
+        toast.success(`${dish.name} 数量 +1`)
       } else {
-        // 如果不存在，添加新项
-        toast.success(`已添加 ${dish.name}`)
-        return [
+        setCartItems((items) => [
           ...items,
           {
             dishId: dish.id,
@@ -65,21 +64,24 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
             image: dish.image,
             quantity: 1,
           },
-        ]
+        ])
+        toast.success(`已添加 ${dish.name}`)
       }
-    })
-  }, [])
+    },
+    [cartItems],
+  )
 
   // 从购物车移除
-  const removeFromCart = useCallback((dishId: string) => {
-    setCartItems((items) => {
-      const item = items.find((i) => i.dishId === dishId)
-      if (item) {
-        toast.success(`已移除 ${item.name}`)
+  const removeFromCart = useCallback(
+    (dishId: string) => {
+      const removedItem = cartItems.find((item) => item.dishId === dishId)
+      setCartItems((items) => items.filter((item) => item.dishId !== dishId))
+      if (removedItem) {
+        toast.success(`已移除 ${removedItem.name}`)
       }
-      return items.filter((item) => item.dishId !== dishId)
-    })
-  }, [])
+    },
+    [cartItems],
+  )
 
   // 更新数量
   const updateQuantity = useCallback((dishId: string, delta: number) => {

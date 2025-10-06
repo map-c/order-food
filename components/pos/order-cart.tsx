@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { format } from "date-fns"
 import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -18,6 +19,9 @@ import {
 import { usePOS } from "@/lib/contexts/pos-context"
 import { useTables } from "@/lib/hooks/use-tables"
 import { toast } from "sonner"
+import type { Order } from "@/types/api"
+
+const formatCurrency = (value: number) => value.toFixed(2)
 
 export function OrderCart() {
   const {
@@ -35,12 +39,16 @@ export function OrderCart() {
 
   const { tables } = useTables()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [selectedPayMethod, setSelectedPayMethod] = useState<"cash" | "card" | "alipay" | "wechat">("cash")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [printableOrder, setPrintableOrder] = useState<Order | null>(null)
 
   const selectedTable = tables.find((t) => t.id === selectedTableId)
+  const totalQuantity = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    [cartItems],
+  )
 
-  const handleSubmitOrder = async () => {
+  const handleSubmitOrder = async (options?: { print?: boolean }) => {
     if (!selectedTableId) {
       toast.error("请先选择桌台")
       return
@@ -67,16 +75,22 @@ export function OrderCart() {
             notes: item.notes,
           })),
           notes: orderNotes,
-          payMethod: selectedPayMethod,
         }),
       })
 
       const data = await response.json()
 
       if (data.success) {
+        const createdOrder: Order = data.data
         toast.success("订单创建成功")
+        setPrintableOrder(createdOrder)
         clearCart()
         setDialogOpen(false)
+        if (options?.print && typeof window !== "undefined") {
+          setTimeout(() => {
+            window.print()
+          }, 50)
+        }
       } else {
         toast.error(data.error?.message || "订单创建失败")
       }
@@ -88,8 +102,60 @@ export function OrderCart() {
     }
   }
 
+  const paymentLabelMap: Record<string, string> = {
+    cash: "现金",
+    card: "刷卡",
+    alipay: "支付宝",
+    wechat: "微信支付",
+  }
+
+  const receiptPaymentText = printableOrder
+    ? printableOrder.payMethod
+      ? paymentLabelMap[printableOrder.payMethod] ?? printableOrder.payMethod
+      : printableOrder.isPaid
+        ? "已支付"
+        : "待支付"
+    : "待支付"
+
   return (
-    <div className="flex flex-col h-full">
+    <>
+      <style jsx global>{`
+        #printable-receipt {
+          display: none;
+        }
+        @media print {
+          body {
+            margin: 0;
+            font-size: 12px;
+            background: #ffffff;
+          }
+          body * {
+            visibility: hidden;
+          }
+          #printable-receipt,
+          #printable-receipt * {
+            visibility: visible;
+          }
+          #printable-receipt {
+            display: block;
+            position: absolute;
+            inset: 0;
+            padding: 24px;
+            background: #ffffff;
+          }
+          #printable-receipt .receipt-container {
+            width: 320px;
+            margin: 0 auto;
+            font-family: "Helvetica", "Arial", sans-serif;
+          }
+          #printable-receipt .receipt-items {
+            max-height: none;
+            overflow: visible;
+          }
+        }
+      `}</style>
+
+      <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
@@ -132,7 +198,7 @@ export function OrderCart() {
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-[#333333] text-sm truncate">{item.name}</h4>
-                    <p className="text-sm font-semibold text-[#1E90FF] mt-1">¥{item.price}</p>
+                    <p className="text-sm font-semibold text-[#1E90FF] mt-1">¥{formatCurrency(Number(item.price))}</p>
                     {item.notes && <p className="text-xs text-[#6B7280] mt-1">备注: {item.notes}</p>}
                   </div>
                   <button
@@ -162,7 +228,7 @@ export function OrderCart() {
                       <Plus className="h-3 w-3" />
                     </Button>
                   </div>
-                  <span className="font-semibold text-[#333333]">¥{(item.price * item.quantity).toFixed(2)}</span>
+                  <span className="font-semibold text-[#333333]">¥{formatCurrency(Number(item.price) * item.quantity)}</span>
                 </div>
               </div>
             ))}
@@ -178,18 +244,18 @@ export function OrderCart() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-[#6B7280]">
                 <span>小计</span>
-                <span>¥{subtotal.toFixed(2)}</span>
+                <span>¥{formatCurrency(subtotal)}</span>
               </div>
               {tax > 0 && (
                 <div className="flex justify-between text-[#6B7280]">
                   <span>税费</span>
-                  <span>¥{tax.toFixed(2)}</span>
+                  <span>¥{formatCurrency(tax)}</span>
                 </div>
               )}
               <Separator />
               <div className="flex justify-between text-lg font-bold text-[#333333]">
                 <span>合计</span>
-                <span className="text-[#1E90FF]">¥{total.toFixed(2)}</span>
+                <span className="text-[#1E90FF]">¥{formatCurrency(total)}</span>
               </div>
             </div>
 
@@ -202,18 +268,18 @@ export function OrderCart() {
               />
 
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white font-semibold text-base"
-                    disabled={!selectedTableId}
-                  >
-                    提交订单 ¥{total.toFixed(2)}
-                  </Button>
-                </DialogTrigger>
+              <DialogTrigger asChild>
+                <Button
+                  className="w-full h-12 bg-[#1E90FF] hover:bg-[#1E90FF]/90 text-white font-semibold text-base"
+                  disabled={!selectedTableId}
+                >
+                    提交订单 ¥{formatCurrency(total)}
+                </Button>
+              </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>确认订单</DialogTitle>
-                    <DialogDescription>请选择支付方式完成订单</DialogDescription>
+                    <DialogDescription>确认订单信息后将自动打印小票</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -239,48 +305,23 @@ export function OrderCart() {
                     </div>
 
                     <div className="space-y-2">
-                      <h4 className="font-semibold text-sm">支付方式</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant={selectedPayMethod === "wechat" ? "default" : "outline"}
-                          className="h-20 flex-col gap-2"
-                          onClick={() => setSelectedPayMethod("wechat")}
-                        >
-                          <div className="h-8 w-8 rounded-lg bg-[#28C76F] flex items-center justify-center text-white font-bold">
-                            微
+                      <h4 className="font-semibold text-sm">菜品明细</h4>
+                      <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                        {cartItems.map((item) => (
+                          <div key={item.dishId} className="border rounded-lg p-3 text-sm">
+                            <div className="flex justify-between">
+                              <span className="font-medium text-[#333333]">{item.name}</span>
+                              <span className="font-semibold text-[#1E90FF]">¥{(item.price * item.quantity).toFixed(2)}</span>
+                            </div>
+                            <div className="mt-1 flex justify-between text-xs text-[#6B7280]">
+                              <span>单价 ¥{Number(item.price).toFixed(2)}</span>
+                              <span>数量 ×{item.quantity}</span>
+                            </div>
+                            {item.notes && (
+                              <p className="mt-1 text-xs text-[#6B7280]">备注：{item.notes}</p>
+                            )}
                           </div>
-                          <span className="text-sm">微信支付</span>
-                        </Button>
-                        <Button
-                          variant={selectedPayMethod === "alipay" ? "default" : "outline"}
-                          className="h-20 flex-col gap-2"
-                          onClick={() => setSelectedPayMethod("alipay")}
-                        >
-                          <div className="h-8 w-8 rounded-lg bg-[#1E90FF] flex items-center justify-center text-white font-bold">
-                            支
-                          </div>
-                          <span className="text-sm">支付宝</span>
-                        </Button>
-                        <Button
-                          variant={selectedPayMethod === "cash" ? "default" : "outline"}
-                          className="h-20 flex-col gap-2"
-                          onClick={() => setSelectedPayMethod("cash")}
-                        >
-                          <div className="h-8 w-8 rounded-lg bg-[#FFB400] flex items-center justify-center text-white font-bold">
-                            现
-                          </div>
-                          <span className="text-sm">现金支付</span>
-                        </Button>
-                        <Button
-                          variant={selectedPayMethod === "card" ? "default" : "outline"}
-                          className="h-20 flex-col gap-2"
-                          onClick={() => setSelectedPayMethod("card")}
-                        >
-                          <div className="h-8 w-8 rounded-lg bg-[#5A6B7B] flex items-center justify-center text-white font-bold">
-                            挂
-                          </div>
-                          <span className="text-sm">挂账</span>
-                        </Button>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -290,10 +331,10 @@ export function OrderCart() {
                     </Button>
                     <Button
                       className="bg-[#1E90FF] hover:bg-[#1E90FF]/90"
-                      onClick={handleSubmitOrder}
+                      onClick={() => handleSubmitOrder({ print: true })}
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? "提交中..." : "确认下单"}
+                      {isSubmitting ? "提交中..." : "确认并打印"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -302,6 +343,73 @@ export function OrderCart() {
           </div>
         </>
       )}
-    </div>
+
+      </div>
+
+      <div id="printable-receipt">
+        {printableOrder && (
+          <div className="receipt-container">
+            <div className="text-center">
+              <h2 className="text-lg font-bold">美味餐厅</h2>
+              <p className="text-xs text-[#6B7280] mt-1">
+                {format(new Date(printableOrder.createdAt), "yyyy-MM-dd HH:mm:ss")}
+              </p>
+            </div>
+
+            <div className="mt-4 text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-[#6B7280]">订单号</span>
+                <span className="font-semibold">{printableOrder.orderNo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#6B7280]">桌号</span>
+                <span className="font-semibold">{printableOrder.table?.number ?? "外带"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#6B7280]">支付状态</span>
+                <span className="font-semibold">{receiptPaymentText}</span>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold mb-2">菜品明细</h3>
+              <div className="receipt-items space-y-2">
+                {printableOrder.items.map((item) => (
+                  <div key={item.id} className="border-b border-dashed pb-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>{item.dish?.name ?? "未知菜品"}</span>
+                      <span>¥{formatCurrency(item.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-[#6B7280] mt-1">
+                      <span>¥{formatCurrency(item.unitPrice)} × {item.quantity}</span>
+                      {item.notes && <span>备注：{item.notes}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-[#6B7280]">合计</span>
+                <span className="font-semibold">¥{formatCurrency(printableOrder.totalPrice)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#6B7280]">已付金额</span>
+                <span className="font-semibold">¥{formatCurrency(printableOrder.paidAmount ?? 0)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#6B7280]">订单备注</span>
+                <span className="max-w-[180px] text-right">
+                  {printableOrder.notes ?? "无"}
+                </span>
+              </div>
+            </div>
+
+            <p className="mt-6 text-center text-xs text-[#6B7280]">感谢惠顾，欢迎再次光临</p>
+          </div>
+        )}
+      </div>
+    </>
   )
 }

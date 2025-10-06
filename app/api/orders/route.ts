@@ -129,13 +129,33 @@ export async function POST(request: NextRequest) {
 
     const { tableId, items, notes, payMethod } = validationResult.data
 
-    // 验证桌台是否存在
-    const table = await prisma.table.findUnique({
-      where: { id: tableId },
-    })
+    const isTakeoutOrder = tableId === "takeout"
+    let finalTableId = tableId
 
-    if (!table) {
-      return errorResponse("NOT_FOUND", "桌台不存在", 404)
+    if (isTakeoutOrder) {
+      let takeoutTable = await prisma.table.findUnique({
+        where: { number: "外带" },
+      })
+
+      if (!takeoutTable) {
+        takeoutTable = await prisma.table.create({
+          data: {
+            number: "外带",
+            capacity: 1,
+            status: "available",
+          },
+        })
+      }
+
+      finalTableId = takeoutTable.id
+    } else {
+      const table = await prisma.table.findUnique({
+        where: { id: tableId },
+      })
+
+      if (!table) {
+        return errorResponse("NOT_FOUND", "桌台不存在", 404)
+      }
     }
 
     // 获取所有菜品信息并验证
@@ -183,7 +203,8 @@ export async function POST(request: NextRequest) {
     const order = await prisma.order.create({
       data: {
         orderNo,
-        tableId,
+        tableId: finalTableId,
+        status: "preparing",
         totalPrice,
         notes,
         payMethod,
@@ -206,10 +227,12 @@ export async function POST(request: NextRequest) {
     })
 
     // 更新桌台状态为占用
-    await prisma.table.update({
-      where: { id: tableId },
-      data: { status: "occupied" },
-    })
+    if (!isTakeoutOrder) {
+      await prisma.table.update({
+        where: { id: finalTableId },
+        data: { status: "occupied" },
+      })
+    }
 
     return successResponse(order, "订单创建成功", 201)
   } catch (error) {

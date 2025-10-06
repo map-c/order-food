@@ -48,6 +48,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const order = await prisma.order.findUnique({
       where: { id },
+      select: {
+        id: true,
+        status: true,
+        tableId: true,
+      },
     })
 
     if (!order) {
@@ -64,6 +69,24 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       where: { id },
       data: { status: "cancelled" },
     })
+
+    if (order.tableId) {
+      const activeOrders = await prisma.order.count({
+        where: {
+          tableId: order.tableId,
+          status: {
+            in: ["pending", "confirmed", "preparing", "ready"],
+          },
+        },
+      })
+
+      if (activeOrders === 0) {
+        await prisma.table.update({
+          where: { id: order.tableId },
+          data: { status: "available" },
+        })
+      }
+    }
 
     return successResponse(null, "订单已取消")
   } catch (error) {
