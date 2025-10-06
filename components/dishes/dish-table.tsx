@@ -94,6 +94,7 @@ export function DishTable({ categoryFilter, searchQuery, statusFilter }: DishTab
       setDeleteDialogOpen(false)
     } catch (error: any) {
       toast.error(error.message || '删除失败')
+      // 删除失败时不关闭对话框，让用户看到错误提示
     } finally {
       setDeletingId(null)
     }
