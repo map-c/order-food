@@ -100,7 +100,7 @@
 | **API 层** | Next.js Route Handlers | RESTful API |
 | **数据验证** | Zod | Schema 验证 |
 | **ORM** | Prisma | 数据库操作 |
-| **数据库** | PostgreSQL / SQLite | 数据持久化 |
+| **数据库** | MySQL / SQLite | 数据持久化 |
 | **认证** | NextAuth.js / Clerk | 用户认证 |
 | **实时通信** | Pusher / Supabase Realtime | 订单实时推送 |
 

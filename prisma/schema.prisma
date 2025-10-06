@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 用户模型
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   // "owner" | "manager" | "staff"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+// 菜品分类
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  icon      String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  dishes    Dish[]
+}
+
+// 菜品
+model Dish {
+  id          String      @id @default(cuid())
+  name        String
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId  String
+  price       Float
+  image       String
+  description String?
+  isAvailable Boolean     @default(true)
+  isSoldOut   Boolean     @default(false)
+  stock       Int?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+
+  @@index([categoryId])
+}
+
+// 桌台
+model Table {
+  id        String   @id @default(cuid())
+  number    String   @unique
+  capacity  Int
+  status    String   @default("available") // "available" | "occupied" | "reserved"
+  qrCode    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+// 订单
+model Order {
+  id         String      @id @default(cuid())
+  orderNo    String      @unique
+  table      Table       @relation(fields: [tableId], references: [id])
+  tableId    String
+  status     String      @default("pending") // "pending" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled"
+  totalPrice Float
+  paidAmount Float       @default(0)
+  isPaid     Boolean     @default(false)
+  payMethod  String?     // "cash" | "card" | "alipay" | "wechat"
+  notes      String?
+  createdBy  User?       @relation(fields: [userId], references: [id])
+  userId     String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  items      OrderItem[]
+
+  @@index([tableId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// 订单项
+model OrderItem {
+  id        String   @id @default(cuid())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String
+  dish      Dish     @relation(fields: [dishId], references: [id])
+  dishId    String
+  quantity  Int
+  unitPrice Float
+  subtotal  Float
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([dishId])
+}

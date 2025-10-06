@@ -1,8 +1,20 @@
+"use client"
+
+import { useState } from "react"
 import { TopNav } from "@/components/layout/top-nav"
 import { DishFilters } from "@/components/dishes/dish-filters"
 import { DishTable } from "@/components/dishes/dish-table"
 
 export default function DishesPage() {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1)
+  }
+
   return (
     <div className="min-h-screen">
       <TopNav />
@@ -17,10 +29,23 @@ export default function DishesPage() {
           </div>
 
           {/* Filters */}
-          <DishFilters />
+          <DishFilters
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            categoryFilter={categoryFilter}
+            onCategoryChange={setCategoryFilter}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            onRefresh={handleRefresh}
+          />
 
           {/* Dish Table */}
-          <DishTable />
+          <DishTable
+            key={refreshKey}
+            searchQuery={searchQuery}
+            categoryFilter={categoryFilter}
+            statusFilter={statusFilter}
+          />
         </div>
       </main>
     </div>
