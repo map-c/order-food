@@ -71,7 +71,7 @@ ALIYUN_OSS_ENDPOINT="https://你的bucket.oss-cn-hangzhou.aliyuncs.com"
     /categories     # ✅ 分类 API（已实现）
     /oss/sts        # ✅ OSS 临时凭证 API（已实现）
     /tables         # ✅ 桌台 API（已实现）
-    /orders         # 订单 API（计划中）
+    /orders         # ✅ 订单 API（已实现）
     /stats          # 统计数据 API（计划中）
     /reports        # 报表 API（计划中）
     /auth           # 认证 API（计划中）
@@ -287,11 +287,11 @@ const result = await uploadToOSS({
 - ✅ 菜品管理 API（CRUD 完整实现）
 - ✅ 分类管理 API
 - ✅ 桌台管理 API（CRUD 完整实现，支持状态管理）
+- ✅ 订单管理 API（CRUD 完整实现，支持状态更新）
 - ✅ 前端使用 SWR 进行数据获取和缓存
 - ✅ 阿里云 OSS 图片上传集成
 
 **待实现**：
-- ⏳ 订单管理 API
 - ⏳ 统计数据 API
 - ⏳ NextAuth.js 身份认证
 - ⏳ 实时订单推送（Pusher/WebSocket）

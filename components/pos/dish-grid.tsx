@@ -74,7 +74,7 @@ export function DishGrid() {
             <p className="text-[#6B7280]">暂无菜品</p>
           </div>
         ) : (
-          <div className="p-4 grid grid-cols-3 gap-4">
+          <div className="p-4 grid grid-cols-4 gap-4">
             {dishes.map((dish) => {
               const isAvailable = dish.isAvailable && !dish.isSoldOut
               return (

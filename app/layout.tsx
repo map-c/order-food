@@ -5,6 +5,7 @@ import { Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Suspense } from "react"
 import { Toaster } from "sonner"
+import { AuthProvider } from "@/lib/auth-context"
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -29,7 +30,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
-        <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+        <AuthProvider>
+          <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+        </AuthProvider>
         <Toaster
           position="top-center"
           richColors

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, Settings, User } from "lucide-react"
+import { Bell, Settings, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,9 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/lib/auth-context"
 
 export function TopNav() {
   const pathname = usePathname()
+  const { user, logout } = useAuth()
 
   const navItems = [
     { href: "/", label: "首页看板" },
@@ -69,7 +71,12 @@ export function TopNav() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>店主账号</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {user?.name || '用户'}
+                <div className="text-xs text-[#6B7280] font-normal mt-1">
+                  {user?.email}
+                </div>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <User className="mr-2 h-4 w-4" />
@@ -80,7 +87,13 @@ export function TopNav() {
                 系统设置
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-[#EA5455]">退出登录</DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-[#EA5455]"
+                onClick={() => logout()}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                退出登录
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

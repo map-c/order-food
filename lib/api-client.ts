@@ -8,12 +8,42 @@ interface FetcherOptions extends RequestInit {
 }
 
 /**
+ * 获取存储的 access token
+ */
+function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('access_token')
+}
+
+/**
+ * 添加认证头
+ */
+function getAuthHeaders(): HeadersInit {
+  const token = getAccessToken()
+  if (token) {
+    return {
+      'Authorization': `Bearer ${token}`,
+    }
+  }
+  return {}
+}
+
+/**
  * 基础 fetcher 函数（用于 SWR）
  */
 export async function fetcher<T>(url: string): Promise<T> {
-  const res = await fetch(url)
+  const res = await fetch(url, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  })
 
   if (!res.ok) {
+    // 401 未授权，跳转到登录页
+    if (res.status === 401 && typeof window !== 'undefined') {
+      window.location.href = '/login'
+    }
+
     const error: any = new Error('API请求失败')
     error.status = res.status
     error.info = await res.json()
@@ -58,10 +88,16 @@ async function request<T>(
   const res = await fetch(finalUrl, {
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...fetchOptions.headers,
     },
     ...fetchOptions,
   })
+
+  // 401 未授权，跳转到登录页
+  if (res.status === 401 && typeof window !== 'undefined') {
+    window.location.href = '/login'
+  }
 
   const data: ApiResponse<T> = await res.json()
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
-import { Eye, Printer, XCircle, MoreVertical, Loader2 } from "lucide-react"
+import { Eye, Printer, XCircle, MoreVertical, Loader2, CheckCircle } from "lucide-react"
 import { format, endOfDay, endOfMonth, endOfWeek, startOfDay, startOfMonth, startOfWeek, subDays } from "date-fns"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -96,6 +97,7 @@ export function OrderList({ filters }: OrderListProps) {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [finishingId, setFinishingId] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [completionPayMethod, setCompletionPayMethod] = useState<OrderPayMethod | "">("")
   const [completionPaidAmount, setCompletionPaidAmount] = useState<string>("")
@@ -167,6 +169,7 @@ export function OrderList({ filters }: OrderListProps) {
     if (!open) {
       setSelectedOrderId(null)
       setCancellingId(null)
+      setFinishingId(null)
       setCompletingId(null)
     }
   }
@@ -225,6 +228,24 @@ export function OrderList({ filters }: OrderListProps) {
       toast.error(err?.message || "取消订单失败")
     } finally {
       setCancellingId(null)
+    }
+  }
+
+  const handleCompletePreparation = async (order: Order) => {
+    if (finishingId) return
+
+    setFinishingId(order.id)
+    try {
+      await apiClient.patch<Order>(`/api/orders/${order.id}/status`, {
+        status: "pending",
+      })
+
+      toast.success("已标记为待取餐")
+      await mutate()
+    } catch (err: any) {
+      toast.error(err?.message || "更新订单状态失败")
+    } finally {
+      setFinishingId(null)
     }
   }
 
@@ -309,6 +330,21 @@ export function OrderList({ filters }: OrderListProps) {
                           <Printer className="mr-2 h-4 w-4" />
                           打印订单
                         </DropdownMenuItem>
+                        {order.status === "preparing" && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onSelect={(event) => {
+                                event.preventDefault()
+                                handleCompletePreparation(order)
+                              }}
+                              disabled={finishingId === order.id}
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              {finishingId === order.id ? "更新中..." : "完成制作"}
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         {order.status === "pending" && (
                           <>
                             <DropdownMenuSeparator />
@@ -336,119 +372,145 @@ export function OrderList({ filters }: OrderListProps) {
       </Card>
 
       <Dialog open={detailsOpen} onOpenChange={handleDetailsOpenChange}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-full overflow-scroll max-h-[90vh] sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>订单详情</DialogTitle>
             <DialogDescription>查看订单的完整信息</DialogDescription>
           </DialogHeader>
           {selectedOrder ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-[#6B7280]">订单号</p>
-                  <p className="font-mono font-semibold">{selectedOrder.orderNo}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-[#6B7280]">桌号</p>
-                  <p className="font-semibold">{selectedOrder.table?.number ?? "-"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-[#6B7280]">下单时间</p>
-                  <p className="font-semibold">{format(new Date(selectedOrder.createdAt), "yyyy-MM-dd HH:mm")}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-[#6B7280]">订单状态</p>
-                  <Badge className={STATUS_CONFIG[selectedOrder.status].color}>
-                    {STATUS_CONFIG[selectedOrder.status].label}
-                  </Badge>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-[#6B7280]">支付状态</p>
-                  <p className="font-semibold">{getPaymentLabel(selectedOrder)}</p>
-                </div>
-                {selectedOrder.notes && (
-                  <div className="space-y-1 col-span-2">
-                    <p className="text-sm text-[#6B7280]">备注</p>
-                    <p className="font-medium">{selectedOrder.notes}</p>
+            <div className="flex flex-col gap-2 md:grid md:gap-4">
+              <Card className="space-y-6 p-6 shadow-none border bg-white">
+                <div className="space-y-4">
+                  <h4 className="text-base font-semibold">订单信息</h4>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <p className="text-sm text-[#6B7280]">订单号</p>
+                      <p className="font-mono font-semibold break-all">{selectedOrder.orderNo}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-[#6B7280]">桌号</p>
+                      <p className="font-semibold">{selectedOrder.table?.number ?? "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-[#6B7280]">下单时间</p>
+                      <p className="font-semibold">{format(new Date(selectedOrder.createdAt), "yyyy-MM-dd HH:mm")}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-[#6B7280]">订单状态</p>
+                      <Badge className={STATUS_CONFIG[selectedOrder.status].color}>
+                        {STATUS_CONFIG[selectedOrder.status].label}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-[#6B7280]">支付状态</p>
+                      <p className="font-semibold">{getPaymentLabel(selectedOrder)}</p>
+                    </div>
+                    {selectedOrder.notes && (
+                      <div className="space-y-1 sm:col-span-2">
+                        <p className="text-sm text-[#6B7280]">备注</p>
+                        <p className="font-medium break-words">{selectedOrder.notes}</p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="space-y-3">
-                <h4 className="font-semibold">结算信息</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-[#333333]">支付方式</Label>
-                    <Select
-                      value={completionPayMethod || undefined}
-                      onValueChange={(value) => setCompletionPayMethod(value as OrderPayMethod)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择支付方式" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PAY_METHOD_ENTRIES.map(([key, label]) => (
-                          <SelectItem key={key} value={key}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-[#333333]">实付金额 (¥)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={completionPaidAmount}
-                      onChange={(event) => setCompletionPaidAmount(event.target.value)}
-                    />
+                <div className="space-y-4">
+                  <h4 className="text-base font-semibold">结算信息</h4>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-[#333333]">支付方式</Label>
+                      <Select
+                        value={completionPayMethod || undefined}
+                        onValueChange={(value) => setCompletionPayMethod(value as OrderPayMethod)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择支付方式" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAY_METHOD_ENTRIES.map(([key, label]) => (
+                            <SelectItem key={key} value={key}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-[#333333]">实付金额 (¥)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={completionPaidAmount}
+                        onChange={(event) => setCompletionPaidAmount(event.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-3">
-                <h4 className="font-semibold">订单菜品</h4>
-                <div className="border rounded-lg divide-y">
-                  {selectedOrder.items.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3">
-                      <div className="flex-1">
-                        <p className="font-medium">{item.dish?.name ?? "未知菜品"}</p>
-                        <p className="text-sm text-[#6B7280]">
-                          ¥{formatCurrency(item.unitPrice)} × {item.quantity}
+                <div className="rounded-lg bg-muted/60 p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6B7280]">总计</span>
+                    <span>¥{formatCurrency(selectedOrder.totalPrice)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6B7280]">已付金额</span>
+                    <span>¥{formatCurrency(selectedOrder.paidAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6B7280]">支付方式</span>
+                    <span className="font-medium">{getPaymentLabel(selectedOrder)}</span>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="p-0 shadow-none border bg-white flex flex-col">
+                <div className="flex items-center justify-between px-6 py-4 border-b">
+                  <h4 className="text-base font-semibold">订单菜品</h4>
+                  <span className="text-xs text-[#6B7280]">共 {selectedOrder.items.length} 项</span>
+                </div>
+                <ScrollArea className="max-h-[460px]">
+                  <div className="divide-y">
+                    {selectedOrder.items.map((item) => (
+                      <div key={item.id} className="flex items-start justify-between gap-4 px-6 py-4">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <p className="font-medium break-words">{item.dish?.name ?? "未知菜品"}</p>
+                          <p className="text-sm text-[#6B7280]">
+                            ¥{formatCurrency(item.unitPrice)} × {item.quantity}
+                          </p>
+                          {item.notes && (
+                            <p className="text-xs text-[#6B7280] break-words">备注：{item.notes}</p>
+                          )}
+                        </div>
+                        <p className="font-semibold text-[#1E90FF] whitespace-nowrap">
+                          ¥{formatCurrency(item.subtotal)}
                         </p>
                       </div>
-                      <p className="font-semibold text-[#1E90FF]">¥{formatCurrency(item.subtotal)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </Card>
 
-              <div className="space-y-2 bg-muted rounded-lg p-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#6B7280]">总计</span>
-                  <span>¥{formatCurrency(selectedOrder.totalPrice)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#6B7280]">已付金额</span>
-                  <span>¥{formatCurrency(selectedOrder.paidAmount)}</span>
-                </div>
-                <div className="flex justify-between text-sm pt-2">
-                  <span className="text-[#6B7280]">支付方式</span>
-                  <span className="font-medium">{getPaymentLabel(selectedOrder)}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 bg-transparent">
+              <div className="flex flex-col-reverse gap-2 md:col-span-2 md:flex-row md:justify-end">
+                <Button variant="outline" className="bg-transparent md:w-auto">
                   <Printer className="mr-2 h-4 w-4" />
                   打印订单
                 </Button>
+                {selectedOrder.status === "preparing" && (
+                  <Button
+                    variant="outline"
+                    className="bg-transparent md:w-auto"
+                    disabled={finishingId === selectedOrder.id}
+                    onClick={() => handleCompletePreparation(selectedOrder)}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    {finishingId === selectedOrder.id ? "更新中..." : "完成制作"}
+                  </Button>
+                )}
                 {selectedOrder.status === "pending" && (
                   <Button
                     variant="outline"
-                    className="flex-1 text-[#EA5455] hover:text-[#EA5455] bg-transparent"
+                    className="text-[#EA5455] hover:text-[#EA5455] bg-transparent md:w-auto"
                     disabled={cancellingId === selectedOrder.id}
                     onClick={() => handleCancelOrder(selectedOrder)}
                   >
@@ -458,7 +520,7 @@ export function OrderList({ filters }: OrderListProps) {
                 )}
                 {selectedOrder.status !== "completed" && selectedOrder.status !== "cancelled" && (
                   <Button
-                    className="flex-1"
+                    className="md:w-auto"
                     onClick={handleCompleteOrder}
                     disabled={
                       completingId === selectedOrder.id ||

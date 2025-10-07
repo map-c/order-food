@@ -85,3 +85,14 @@ export const CommonErrors = {
   validationError: (message: string) =>
     errorResponse('VALIDATION_ERROR', message, 422),
 }
+
+/**
+ * API 响应辅助对象（统一接口）
+ */
+export const apiResponse = {
+  success: <T>(data: T, message?: string, status: number = 200) =>
+    successResponse(data, message, status),
+
+  error: (message: string, code: string, status: number = 400) =>
+    errorResponse(code, message, status),
+}

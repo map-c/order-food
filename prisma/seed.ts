@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { hashPassword } from '../lib/password'
 
 const prisma = new PrismaClient()
 
@@ -13,12 +14,25 @@ async function main() {
   await prisma.table.deleteMany()
   await prisma.user.deleteMany()
 
-  // 创建用户
+  // 创建用户（使用加密密码）
+  const hashedAdminPassword = await hashPassword('admin123')
+  const hashedOwnerPassword = await hashPassword('owner123')
+  const hashedStaffPassword = await hashPassword('staff123')
+
+  const admin = await prisma.user.create({
+    data: {
+      name: '管理员',
+      email: 'admin@example.com',
+      password: hashedAdminPassword,
+      role: 'owner',
+    },
+  })
+
   const owner = await prisma.user.create({
     data: {
       name: '张老板',
       email: 'owner@example.com',
-      password: '$2a$10$example', // 实际应使用 bcrypt 加密
+      password: hashedOwnerPassword,
       role: 'owner',
     },
   })
@@ -27,7 +41,7 @@ async function main() {
     data: {
       name: '李员工',
       email: 'staff@example.com',
-      password: '$2a$10$example',
+      password: hashedStaffPassword,
       role: 'staff',
     },
   })
@@ -293,11 +307,15 @@ async function main() {
   console.log('✅ 订单创建完成')
 
   console.log('\n🎉 数据库填充完成！')
-  console.log(`   - 用户: ${2} 个`)
+  console.log(`   - 用户: ${3} 个`)
   console.log(`   - 分类: ${categories.length} 个`)
   console.log(`   - 菜品: ${dishes.length} 个`)
   console.log(`   - 桌台: ${tables.length} 个`)
   console.log(`   - 订单: ${2} 个`)
+  console.log('\n📝 测试账号信息：')
+  console.log('   管理员: admin@example.com / admin123')
+  console.log('   店主: owner@example.com / owner123')
+  console.log('   员工: staff@example.com / staff123')
 }
 
 main()
