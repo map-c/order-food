@@ -15,7 +15,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - React Hook Form + Zod 表单验证
 - Recharts 数据可视化
 - Prisma ORM（数据库访问层）
-- NextAuth.js（身份认证，计划中）
+- JWT 鉴权（已实现）
+- SWR 数据获取
 
 ## 常用命令
 
@@ -304,10 +305,40 @@ const result = await uploadToOSS({
 - ⏳ 实时订单推送（Pusher/WebSocket）
 
 参考文档：
-- `docs/Next.js API路由实现方案.md`
-- `docs/阿里云OSS图片上传集成.md`
-- `docs/鉴权系统实现总结.md`
-- `docs/报表模块实现文档.md` ✨
+- [Next.js API路由实现方案.md](docs/Next.js API路由实现方案.md)
+- [阿里云OSS图片上传集成.md](docs/阿里云OSS图片上传集成.md)
+- [鉴权系统实现总结.md](docs/鉴权系统实现总结.md)
+- [报表模块实现文档.md](docs/报表模块实现文档.md) ✨
+
+### 认证与鉴权
+
+**实现方案**：基于 JWT 的鉴权系统
+
+**核心文件**：
+- [lib/jwt.ts](lib/jwt.ts) - JWT 生成和验证工具
+- [lib/password.ts](lib/password.ts) - bcrypt 密码加密
+- [lib/auth-middleware.ts](lib/auth-middleware.ts) - API 路由鉴权中间件
+- [lib/auth-context.tsx](lib/auth-context.tsx) - 前端认证上下文
+
+**使用示例**：
+```typescript
+// API 路由鉴权
+import { authenticateRequest } from '@/lib/auth-middleware'
+
+export async function GET(req: Request) {
+  const { user, error } = await authenticateRequest(req)
+  if (error) return error
+  // ...
+}
+
+// 前端使用认证
+import { useAuth } from '@/lib/auth-context'
+
+function MyComponent() {
+  const { user, login, logout } = useAuth()
+  // ...
+}
+```
 
 ### 性能优化建议
 
