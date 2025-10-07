@@ -308,7 +308,8 @@ const result = await uploadToOSS({
 - [Next.js API路由实现方案.md](docs/Next.js API路由实现方案.md)
 - [阿里云OSS图片上传集成.md](docs/阿里云OSS图片上传集成.md)
 - [鉴权系统实现总结.md](docs/鉴权系统实现总结.md)
-- [报表模块实现文档.md](docs/报表模块实现文档.md) ✨
+- [报表模块实现文档.md](docs/报表模块实现文档.md)
+- [Vercel部署问题与解决方案.md](docs/Vercel部署问题与解决方案.md) ⚡
 
 ### 认证与鉴权
 
