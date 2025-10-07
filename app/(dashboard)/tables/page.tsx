@@ -7,7 +7,7 @@ import { TableGrid } from "@/components/tables/table-grid"
 import { TableList } from "@/components/tables/table-list"
 import { TableDialog } from "@/components/tables/table-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { TopNav } from "@/components/layout/top-nav"
+// import { TopNav } from "@/components/layout/top-nav"
 
 export default function TablesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -41,7 +41,7 @@ export default function TablesPage() {
 
   return (
     <div className="flex flex-col h-full bg-muted">
-      <TopNav />
+      {/* <TopNav /> */}
       {/* Header */}
       <div className="bg-white border-b px-6 py-4">
         <div className="flex items-center justify-between">

@@ -1,4 +1,4 @@
-import { TopNav } from "@/components/layout/top-nav"
+// import { TopNav } from "@/components/layout/top-nav"
 import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,6 @@ import { Separator } from "@/components/ui/separator"
 export default function SettingsPage() {
   return (
     <div className="min-h-screen">
-      <TopNav />
       <main className="p-6">
         <div className="max-w-[1000px] mx-auto space-y-6">
           {/* Page Header */}

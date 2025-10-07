@@ -1,52 +1,41 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useDashboard } from "@/lib/hooks/use-dashboard"
+import { format } from "date-fns"
 
-const orders = [
-  {
-    id: "ORD-20250105-001",
-    table: "A-05",
-    amount: "¥186",
-    status: "completed",
-    time: "12:35",
-  },
-  {
-    id: "ORD-20250105-002",
-    table: "B-12",
-    amount: "¥245",
-    status: "cooking",
-    time: "12:42",
-  },
-  {
-    id: "ORD-20250105-003",
-    table: "外带",
-    amount: "¥98",
-    status: "pending",
-    time: "12:48",
-  },
-  {
-    id: "ORD-20250105-004",
-    table: "C-08",
-    amount: "¥312",
-    status: "cooking",
-    time: "12:52",
-  },
-  {
-    id: "ORD-20250105-005",
-    table: "A-03",
-    amount: "¥156",
-    status: "completed",
-    time: "13:05",
-  },
-]
-
-const statusConfig = {
+const statusConfig: Record<string, { label: string; color: string }> = {
+  pending: { label: "待接单", color: "bg-[#EA5455] text-white" },
+  confirmed: { label: "已接单", color: "bg-[#FFB400] text-white" },
+  preparing: { label: "制作中", color: "bg-[#1E90FF] text-white" },
+  ready: { label: "待取餐", color: "bg-[#9C27B0] text-white" },
   completed: { label: "已完成", color: "bg-[#28C76F] text-white" },
-  cooking: { label: "制作中", color: "bg-[#FFB400] text-white" },
-  pending: { label: "待支付", color: "bg-[#EA5455] text-white" },
+  cancelled: { label: "已取消", color: "bg-[#6B7280] text-white" },
 }
 
 export function RecentOrders() {
+  const { data, isLoading } = useDashboard()
+
+  if (isLoading) {
+    return (
+      <Card className="p-6 shadow-card">
+        <div className="mb-6">
+          <div className="h-6 w-24 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-32 bg-gray-200 rounded mt-2 animate-pulse" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+          ))}
+        </div>
+      </Card>
+    )
+  }
+
+  const orders = data?.recentOrders || []
+
   return (
     <Card className="p-6 shadow-card">
       <div className="mb-6">
@@ -65,22 +54,34 @@ export function RecentOrders() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {orders.map((order) => (
-            <TableRow key={order.id}>
-              <TableCell className="font-mono text-sm">{order.id}</TableCell>
-              <TableCell className="font-medium">{order.table}</TableCell>
-              <TableCell className="font-semibold text-[#1E90FF]">{order.amount}</TableCell>
-              <TableCell>
-                <Badge className={statusConfig[order.status as keyof typeof statusConfig].color}>
-                  {statusConfig[order.status as keyof typeof statusConfig].label}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-[#6B7280]">{order.time}</TableCell>
-              <TableCell className="text-right">
-                <button className="text-sm text-[#1E90FF] hover:underline">查看详情</button>
+          {orders.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center text-[#6B7280] py-8">
+                暂无订单
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            orders.map((order) => (
+              <TableRow key={order.id}>
+                <TableCell className="font-mono text-sm">{order.orderNumber}</TableCell>
+                <TableCell className="font-medium">{order.tableNumber || '外带'}</TableCell>
+                <TableCell className="font-semibold text-[#1E90FF]">
+                  ¥{order.totalPrice.toFixed(2)}
+                </TableCell>
+                <TableCell>
+                  <Badge className={statusConfig[order.status]?.color || "bg-gray-500 text-white"}>
+                    {statusConfig[order.status]?.label || order.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-[#6B7280]">
+                  {format(new Date(order.createdAt), 'HH:mm')}
+                </TableCell>
+                <TableCell className="text-right">
+                  <button className="text-sm text-[#1E90FF] hover:underline">查看详情</button>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </Card>
