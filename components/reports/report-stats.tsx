@@ -76,7 +76,7 @@ export function ReportStats() {
               >
                 <Icon className="h-6 w-6" style={{ color: stat.color }} />
               </div>
-              {hasChange && (
+              {hasChange && stat.change !== undefined && (
                 <div
                   className={`flex items-center gap-1 text-sm font-medium ${trend === "up" ? "text-[#28C76F]" : "text-[#EA5455]"}`}
                 >

@@ -65,7 +65,10 @@ export async function POST(request: NextRequest) {
     const { password: _, ...userWithoutPassword } = user
 
     const response: LoginResponse = {
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        role: userWithoutPassword.role as 'owner' | 'manager' | 'staff',
+      },
       accessToken,
       refreshToken,
     }
