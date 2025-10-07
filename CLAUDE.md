@@ -72,9 +72,9 @@ ALIYUN_OSS_ENDPOINT="https://你的bucket.oss-cn-hangzhou.aliyuncs.com"
     /oss/sts        # ✅ OSS 临时凭证 API（已实现）
     /tables         # ✅ 桌台 API（已实现）
     /orders         # ✅ 订单 API（已实现）
+    /auth           # ✅ 认证 API（已实现）
+    /reports        # ✅ 报表 API（示例已实现）
     /stats          # 统计数据 API（计划中）
-    /reports        # 报表 API（计划中）
-    /auth           # 认证 API（计划中）
   /layout.tsx       # 根布局
   /globals.css      # 全局样式
 
@@ -94,6 +94,11 @@ ALIYUN_OSS_ENDPOINT="https://你的bucket.oss-cn-hangzhou.aliyuncs.com"
   /api-client.ts    # ✅ API 请求封装
   /api-response.ts  # ✅ API 响应工具
   /oss-client.ts    # ✅ 阿里云 OSS 上传客户端
+  /jwt.ts           # ✅ JWT Token 工具
+  /password.ts      # ✅ 密码加密工具
+  /auth-middleware.ts # ✅ 认证中间件
+  /auth-context.tsx # ✅ 认证上下文
+  /date-utils.ts    # ✅ 日期处理工具
 
 /prisma              # Prisma 配置
   /schema.prisma    # ✅ 数据库 Schema 定义
@@ -102,6 +107,8 @@ ALIYUN_OSS_ENDPOINT="https://你的bucket.oss-cn-hangzhou.aliyuncs.com"
 
 /types               # TypeScript 类型定义
   /oss.ts           # ✅ OSS 相关类型定义
+  /auth.ts          # ✅ 认证相关类型定义
+  /reports.ts       # ✅ 报表相关类型定义
 ```
 
 ### 路径别名
@@ -292,11 +299,15 @@ const result = await uploadToOSS({
 - ✅ 阿里云 OSS 图片上传集成
 
 **待实现**：
-- ⏳ 统计数据 API
-- ⏳ NextAuth.js 身份认证
+- ⏳ 统计数据 API（首页看板）
+- ⏳ 报表数据导出（Excel/PDF）
 - ⏳ 实时订单推送（Pusher/WebSocket）
 
-参考文档：`docs/Next.js API路由实现方案.md`、`docs/阿里云OSS图片上传集成.md`
+参考文档：
+- `docs/Next.js API路由实现方案.md`
+- `docs/阿里云OSS图片上传集成.md`
+- `docs/鉴权系统实现总结.md`
+- `docs/报表模块实现文档.md` ✨
 
 ### 性能优化建议
 

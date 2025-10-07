@@ -1,16 +1,17 @@
-import { TopNav } from "@/components/layout/top-nav"
+// import { TopNav } from "@/components/layout/top-nav"
 import { ReportFilters } from "@/components/reports/report-filters"
 import { ReportStats } from "@/components/reports/report-stats"
 import { RevenueChart } from "@/components/reports/revenue-chart"
 import { CategoryChart } from "@/components/reports/category-chart"
 import { TopDishes } from "@/components/reports/top-dishes"
 import { HourlyAnalysis } from "@/components/reports/hourly-analysis"
+import { ReportProvider } from "@/lib/report-context"
 
 export default function ReportsPage() {
   return (
     <div className="min-h-screen">
-      <TopNav />
-      <main className="p-6">
+      {/* <TopNav /> */}
+      <main className="p-0">
         <div className="max-w-[1400px] mx-auto space-y-6">
           {/* Page Header */}
           <div className="flex items-center justify-between">
@@ -20,27 +21,29 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Filters */}
-          <ReportFilters />
+          <ReportProvider>
+            {/* Filters */}
+            <ReportFilters />
 
-          {/* Stats Overview */}
-          <ReportStats />
+            {/* Stats Overview */}
+            <ReportStats />
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <RevenueChart />
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <RevenueChart />
+              </div>
+              <div>
+                <CategoryChart />
+              </div>
             </div>
-            <div>
-              <CategoryChart />
-            </div>
-          </div>
 
-          {/* Analysis Tables */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <TopDishes />
-            <HourlyAnalysis />
-          </div>
+            {/* Analysis Tables */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TopDishes />
+              <HourlyAnalysis />
+            </div>
+          </ReportProvider>
         </div>
       </main>
     </div>
