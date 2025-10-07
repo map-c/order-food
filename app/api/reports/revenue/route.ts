@@ -5,8 +5,8 @@ import { apiResponse } from '@/lib/api-response'
 import { format, startOfHour, startOfDay, startOfMonth } from 'date-fns'
 
 const querySchema = z.object({
-  startDate: z.string().datetime(),
-  endDate: z.string().datetime(),
+  startDate: z.string({ required_error: '开始日期不能为空' }).datetime('开始日期格式不正确'),
+  endDate: z.string({ required_error: '结束日期不能为空' }).datetime('结束日期格式不正确'),
   granularity: z.enum(['hour', 'day', 'month']).optional().default('day'),
 })
 
@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
 
     const params = {
-      startDate: searchParams.get('startDate'),
-      endDate: searchParams.get('endDate'),
+      startDate: searchParams.get('startDate') || undefined,
+      endDate: searchParams.get('endDate') || undefined,
       granularity: searchParams.get('granularity') || 'day',
     }
 

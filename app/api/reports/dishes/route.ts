@@ -5,8 +5,8 @@ import { apiResponse } from '@/lib/api-response'
 import type { TopDishData } from '@/types/reports'
 
 const querySchema = z.object({
-  startDate: z.string().datetime(),
-  endDate: z.string().datetime(),
+  startDate: z.string({ required_error: '开始日期不能为空' }).datetime('开始日期格式不正确'),
+  endDate: z.string({ required_error: '结束日期不能为空' }).datetime('结束日期格式不正确'),
   limit: z.string().optional().default('10'),
   categoryId: z.string().optional(),
   compareStartDate: z.string().datetime().optional(),
@@ -22,12 +22,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
 
     const params = {
-      startDate: searchParams.get('startDate'),
-      endDate: searchParams.get('endDate'),
+      startDate: searchParams.get('startDate') || undefined,
+      endDate: searchParams.get('endDate') || undefined,
       limit: searchParams.get('limit') || '10',
-      categoryId: searchParams.get('categoryId'),
-      compareStartDate: searchParams.get('compareStartDate'),
-      compareEndDate: searchParams.get('compareEndDate'),
+      categoryId: searchParams.get('categoryId') || undefined,
+      compareStartDate: searchParams.get('compareStartDate') || undefined,
+      compareEndDate: searchParams.get('compareEndDate') || undefined,
     }
 
     // 验证参数
