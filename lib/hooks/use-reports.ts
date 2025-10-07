@@ -19,7 +19,7 @@ export function useReportOverview(filters: ReportFilters) {
     params.append('compareEndDate', filters.compareEndDate)
   }
 
-  const { data, error, isLoading, mutate } = useSWR<{ data: ReportOverview }>(
+  const { data, error, isLoading, mutate } = useSWR<ReportOverview>(
     `/api/reports/overview?${params.toString()}`,
     fetcher,
     {
@@ -29,7 +29,7 @@ export function useReportOverview(filters: ReportFilters) {
   )
 
   return {
-    data: data?.data,
+    data,
     isLoading,
     error,
     mutate,
@@ -60,7 +60,7 @@ export function useRevenueReport(
   )
 
   return {
-    data: data?.data,
+    data,
     isLoading,
     error,
   }
@@ -107,7 +107,7 @@ export function useDishesReport(
   )
 
   return {
-    data: data?.data,
+    data,
     isLoading,
     error,
   }
@@ -132,7 +132,7 @@ export function useHourlyReport(startDate: string, endDate: string) {
   )
 
   return {
-    data: data?.data,
+    data,
     isLoading,
     error,
   }
