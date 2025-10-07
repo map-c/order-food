@@ -15,7 +15,7 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen">
       {/* <TopNav /> */}
-      <main className="p-6">
+      <main className="px-6">
         <div className="max-w-[1400px] mx-auto space-y-6">
           {/* Page Header */}
           <div>

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { TopNav } from "@/components/layout/top-nav"
 import { DishFilters } from "@/components/dishes/dish-filters"
 import { DishTable } from "@/components/dishes/dish-table"
 
@@ -17,8 +16,7 @@ export default function DishesPage() {
 
   return (
     <div className="min-h-screen">
-      <TopNav />
-      <main className="p-6">
+      <main className="px-4">
         <div className="max-w-[1400px] mx-auto space-y-6">
           {/* Page Header */}
           <div className="flex items-center justify-between">

@@ -11,7 +11,7 @@ export default function DashboardLayout({
     <ProtectedRoute>
       <div className="min-h-screen">
         <TopNav />
-        <main className="p-6">
+        <main className="p-1">
           <div className="max-w-[1400px] mx-auto">
             {children}
           </div>

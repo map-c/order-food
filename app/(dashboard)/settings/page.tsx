@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 export default function SettingsPage() {
   return (
     <div className="min-h-screen">
-      <main className="p-6">
+      <main className="px-6">
         <div className="max-w-[1000px] mx-auto space-y-6">
           {/* Page Header */}
           <div>
