@@ -24,8 +24,63 @@ const createDishSchema = z.object({
 })
 
 /**
- * GET /api/dishes
- * 获取菜品列表（支持分类、搜索、可用性筛选）
+ * @swagger
+ * /api/dishes:
+ *   get:
+ *     summary: 获取菜品列表
+ *     description: 获取所有菜品列表，支持分类、搜索、可用性筛选
+ *     tags:
+ *       - 菜品
+ *     parameters:
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: string
+ *         description: 按分类ID筛选
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: 搜索关键词（匹配菜品名称或描述）
+ *       - in: query
+ *         name: isAvailable
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: 筛选上架/下架状态
+ *       - in: query
+ *         name: isSoldOut
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: 筛选沽清状态
+ *     responses:
+ *       200:
+ *         description: 成功返回菜品列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Dish'
+ *       422:
+ *         description: 参数验证失败
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 服务器内部错误
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 export async function GET(request: NextRequest) {
   try {
@@ -88,8 +143,94 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/dishes
- * 创建新菜品
+ * @swagger
+ * /api/dishes:
+ *   post:
+ *     summary: 创建新菜品
+ *     description: 创建一个新的菜品
+ *     tags:
+ *       - 菜品
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - categoryId
+ *               - price
+ *               - image
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: 菜品名称
+ *                 example: 宫保鸡丁
+ *               categoryId:
+ *                 type: string
+ *                 description: 所属分类ID
+ *                 example: clxyz123456
+ *               price:
+ *                 type: number
+ *                 description: 价格
+ *                 example: 38.0
+ *               image:
+ *                 type: string
+ *                 format: uri
+ *                 description: 菜品图片URL
+ *                 example: https://example.com/dish.jpg
+ *               description:
+ *                 type: string
+ *                 description: 菜品描述
+ *                 example: 经典川菜，麻辣鲜香
+ *               isAvailable:
+ *                 type: boolean
+ *                 description: 是否上架
+ *                 default: true
+ *               isSoldOut:
+ *                 type: boolean
+ *                 description: 是否沽清
+ *                 default: false
+ *               stock:
+ *                 type: number
+ *                 description: 库存数量
+ *                 example: 50
+ *     responses:
+ *       201:
+ *         description: 菜品创建成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Dish'
+ *                 message:
+ *                   type: string
+ *                   example: 菜品创建成功
+ *       404:
+ *         description: 分类不存在
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       422:
+ *         description: 参数验证失败
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: 服务器内部错误
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 export async function POST(request: NextRequest) {
   try {

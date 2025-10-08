@@ -36,15 +36,24 @@ pnpm db:migrate        # 创建并应用数据库迁移（开发环境）
 pnpm db:seed           # 运行种子数据脚本
 pnpm db:studio         # 启动数据库可视化界面
 npx prisma generate    # 生成 Prisma Client（修改 schema 后需执行）
+
+# API 文档
+# 访问 http://localhost:3000/api-docs 查看交互式 API 文档
+# 访问 http://localhost:3000/api/openapi 获取 OpenAPI JSON 规范
 ```
 
 ## 环境配置
 
-项目需要配置 `.env` 文件（不提交到 Git），包含以下变量：
+项目需要配置 `.env` 文件（不提交到 Git），参考 `.env.example`：
 
 ```bash
-# 数据库连接（SQLite）
-DATABASE_URL="file:./dev.db"
+# 数据库连接（PostgreSQL）
+DATABASE_URL="postgresql://user:password@localhost:5432/restaurant_db?schema=public"
+
+# JWT 认证配置
+JWT_SECRET="your-secret-key-change-in-production-min-32-characters"
+JWT_EXPIRES_IN="7d"
+REFRESH_TOKEN_EXPIRES_IN="30d"
 
 # 阿里云 OSS 配置（用于图片上传）
 ALIYUN_ACCESS_KEY_ID="你的 AccessKey ID"
@@ -53,6 +62,17 @@ ALIYUN_OSS_REGION="oss-cn-hangzhou"
 ALIYUN_OSS_BUCKET="你的 Bucket 名称"
 ALIYUN_OSS_ENDPOINT="https://你的bucket.oss-cn-hangzhou.aliyuncs.com"
 ```
+
+**首次启动步骤**：
+1. 复制 `.env.example` 到 `.env` 并填入配置
+2. `pnpm install` - 安装依赖（会自动执行 `prisma generate`）
+3. `pnpm db:migrate` - 创建数据库表结构
+4. `pnpm db:seed` - 填充测试数据
+5. `pnpm dev` - 启动开发服务器
+
+**默认登录账号**（由种子数据创建）：
+- 用户名: `admin`
+- 密码: `admin123`
 
 ## 项目架构
 
@@ -217,7 +237,7 @@ import { cn } from "@/lib/utils"
 
 #### 数据库设计
 
-使用 Prisma ORM + PostgreSQL/SQLite：
+使用 Prisma ORM + PostgreSQL：
 
 **核心模型**：
 - `User` - 用户（店主、经理、员工）
@@ -290,7 +310,7 @@ const result = await uploadToOSS({
 ### 数据库实现进度
 
 **已完成**：
-- ✅ Prisma + SQLite 数据库配置
+- ✅ Prisma + PostgreSQL 数据库配置
 - ✅ 数据模型定义（User、Category、Dish、Table、Order、OrderItem）
 - ✅ 菜品管理 API（CRUD 完整实现）
 - ✅ 分类管理 API
@@ -309,7 +329,8 @@ const result = await uploadToOSS({
 - [阿里云OSS图片上传集成.md](docs/阿里云OSS图片上传集成.md)
 - [鉴权系统实现总结.md](docs/鉴权系统实现总结.md)
 - [报表模块实现文档.md](docs/报表模块实现文档.md)
-- [Vercel部署问题与解决方案.md](docs/Vercel部署问题与解决方案.md) ⚡
+- [Vercel部署问题与解决方案.md](docs/Vercel部署问题与解决方案.md)
+- [API文档注释指南.md](docs/API文档注释指南.md) 📖
 
 ### 认证与鉴权
 
@@ -349,3 +370,108 @@ function MyComponent() {
 - API 路由使用 `revalidate` 配置缓存策略
 - 数据库查询优化：使用 Prisma 的 `select` 和 `include` 精确获取字段
 - 考虑使用 Edge Runtime 加速 API 响应
+
+## 代码规范与已知问题
+
+### TypeScript 严格模式
+
+项目启用了 TypeScript 严格模式 (`strict: true`)，所有代码应遵循：
+- 避免使用 `any` 类型，优先使用具体类型或 `unknown`
+- API 路由的 where 条件使用 Prisma 生成的类型（如 `Prisma.DishWhereInput`）
+- 事件处理器使用明确的事件类型（如 `MouseEvent<HTMLButtonElement>`）
+- 错误处理使用 `unknown` 类型，通过 `instanceof Error` 进行类型收窄
+
+### 常见类型定义
+
+```typescript
+// API 响应类型
+import { Prisma } from '@prisma/client'
+
+// 查询条件
+const where: Prisma.DishWhereInput = {}
+
+// 事件处理
+import { MouseEvent } from 'react'
+onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
+
+// 错误处理
+catch (error: unknown) {
+  const message = error instanceof Error ? error.message : '未知错误'
+}
+```
+
+### TypeScript 类型错误修复
+
+项目中存在一些待修复的类型问题，详见 [docs/TypeScript类型错误修复清单.md](docs/TypeScript类型错误修复清单.md)
+
+**修复优先级**：
+- P0：API 路由和 lib 工具的 `any` 类型
+- P1：组件事件处理器的 `any` 类型
+- P2：未使用的变量和最佳实践警告
+
+### 数据库说明
+
+项目使用 **PostgreSQL** 数据库：
+- 开发环境：本地 PostgreSQL 或使用 Docker 快速启动
+- 生产环境：推荐使用 Vercel Postgres、Supabase 或 Neon
+- 不支持 SQLite（生产环境需要关系型数据库的完整特性）
+
+**本地 PostgreSQL 快速启动**（使用 Docker）：
+```bash
+docker run --name restaurant-postgres \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=restaurant_db \
+  -p 5432:5432 \
+  -d postgres:15
+```
+
+### API 文档系统
+
+项目集成了 **Swagger/OpenAPI + Scalar** 作为 API 文档解决方案：
+
+**技术栈**：
+- `next-swagger-doc` - 从 JSDoc 注释生成 OpenAPI 规范
+- `@scalar/nextjs-api-reference` - 现代美观的 API 文档 UI
+
+**访问地址**：
+- 交互式文档：http://localhost:3000/api-docs（使用 Scalar UI）
+- OpenAPI 规范：http://localhost:3000/api/openapi（JSON 格式）
+
+**核心文件**：
+- [lib/swagger.ts](lib/swagger.ts) - OpenAPI 规范配置和生成
+- [app/api-docs/route.ts](app/api-docs/route.ts) - Scalar 文档页面路由
+- [app/api/openapi/route.ts](app/api/openapi/route.ts) - OpenAPI JSON 端点
+
+**添加文档注释**：
+在 API 路由文件中使用 JSDoc `@swagger` 注释，例如：
+
+```typescript
+/**
+ * @swagger
+ * /api/dishes:
+ *   get:
+ *     summary: 获取菜品列表
+ *     tags:
+ *       - 菜品
+ *     responses:
+ *       200:
+ *         description: 成功返回菜品列表
+ */
+export async function GET(request: NextRequest) {
+  // ...
+}
+```
+
+详细指南参见 [docs/API文档注释指南.md](docs/API文档注释指南.md)
+
+**文档状态**：
+- ✅ 已完成：GET /api/dishes, POST /api/dishes, GET /api/categories, POST /api/auth/login
+- ⏳ 待补充：其他 API 路由（参见指南文档）
+
+### Vercel 部署注意事项
+
+部署到 Vercel 时需注意的问题，详见 [docs/Vercel部署问题与解决方案.md](docs/Vercel部署问题与解决方案.md)：
+- 配置 Vercel Postgres 或其他 PostgreSQL 数据库
+- 配置环境变量（DATABASE_URL、JWT_SECRET、OSS 配置等）
+- build 命令会自动执行 `prisma generate`
+- 首次部署后需在 Vercel 中手动执行数据库迁移
